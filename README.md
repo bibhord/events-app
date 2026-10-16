@@ -7,6 +7,7 @@ routing, `fetch` for the API, no other runtime dependencies.
 ```bash
 npm install
 npm run dev     # http://localhost:5173
+npm test        # 35 unit tests
 ```
 
 The API is `https://rf-json-server.herokuapp.com/events-3/`. All five endpoints
@@ -121,10 +122,48 @@ A modal dependency would have been more to explain than to write.
 
 ---
 
+## Tests
+
+```bash
+npm test
+```
+
+35 tests, all over pure functions — no component rendering and no jsdom, so
+the suite runs in under a second and stays worth running.
+
+Most of them are in `api/client.test.ts`, because error handling is what the
+brief is actually assessing and it is the one thing the real API will never
+let you observe. They pin down the mapping from what went wrong to what the
+user is told:
+
+- A rejected `fetch` becomes `network`; a non-2xx becomes `http` carrying the
+  status; an unreadable 2xx body becomes `parse`
+- An empty body is success, not a parse failure — `DELETE` on this API answers
+  with nothing
+- A request cancelled by its caller is **not** turned into an `ApiError`, since
+  a component unmounting is not something to show the user
+- `retryable` is table-tested across every kind and status, because a 404 must
+  not offer "Try again" — retrying produces another 404
+- The simulation toggle fails requests without touching the network, and stops
+  cleanly when switched off
+
+`lib/validation.test.ts` covers empty and whitespace-only fields, the length
+limits at and over the boundary, misspelled and hex colours, and that `normalize`
+keeps `" Acme "` and `"Acme"` from becoming two companies. `lib/sort.test.ts`
+covers case-insensitive ordering, the name tiebreak, numeric collation
+(`Co 2` before `Co 10`), that the input array is not mutated, and that a
+missing company does not throw.
+
+`fetch` is stubbed with `vi.stubGlobal` rather than through a mocking library:
+there is one call site and the stub is three lines.
+
+---
+
 ## What I would do with more time
 
-- **Tests.** Vitest and React Testing Library over `validate`, the sort, and
-  the error states. The logic is already in pure functions for this reason.
+- **Component tests.** The unit tests cover the logic; React Testing Library
+  over the form would cover the wiring — that errors appear only after a field
+  is touched, and that a failed save leaves what was typed in place.
 - **Focus trapping in the modal.** It focuses the panel and closes on Escape,
   but does not cycle focus within itself.
 - **Optimistic delete.** Removing the row immediately and restoring it if the
