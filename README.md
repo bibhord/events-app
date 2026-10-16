@@ -7,12 +7,17 @@ routing, `fetch` for the API, no other runtime dependencies.
 ```bash
 npm install
 npm run dev     # http://localhost:5173
-npm test        # 35 unit tests
+npm test        # 39 unit tests
 ```
 
 The API is `https://rf-json-server.herokuapp.com/events-3/`. All five endpoints
 hold the same data; this one is shared by fewer people, so demo data is less
 likely to be someone else's.
+
+It was live when this was written — GET, POST, PUT and DELETE all verified
+against it. It is a shared public `json-server`, so the records are whatever
+other people have left behind, and if the host is ever down the app shows the
+"Could not reach the server" banner with a retry rather than an empty screen.
 
 ---
 
@@ -67,8 +72,35 @@ reported to the user as an error.
 A failed delete should not blank out a list that is on screen and still
 correct. `useEvents` holds `loadError` and `actionError` separately: the first
 replaces the list, the second appears above it while the list keeps rendering.
-A failed save also leaves the form filled in — losing what someone typed
-because a request failed is a worse bug than the failure.
+
+An action error is rendered wherever the action was started. Edit and delete
+both happen inside a modal, and a modal has a backdrop over the page, so a
+banner at the top of the page would be invisible exactly when it matters. The
+modals render it themselves, and the page-level banner is suppressed while one
+is open so the same message does not appear twice.
+
+A failed save also leaves the form filled in. That is why `EventForm` seeds its
+state from `initial` once and never syncs it back in an effect: the parent
+builds a fresh object on every render, so an effect watching `initial` would
+reset the form the moment `busy` flipped back after a failure, throwing away
+what the user typed. The edit modal mounts the form with `key={event.id}`
+instead, so switching to a different event still starts clean. Losing someone's
+typing because a request failed is a worse bug than the failure.
+
+### PUT sends the whole record
+
+`PUT` on this server *replaces* the record rather than merging into it. The
+form only edits four fields, so sending just those four silently destroys the
+other six — `date`, `email`, `phone`, `address`, `isActive`, `image`. Nothing
+in the UI shows those columns, so the damage is invisible from the screen:
+the list would keep displaying a complete event while the server held a
+gutted one.
+
+`updateEvent` therefore sends `{ ...existing, ...draft }`, and the list takes
+the server's returned record rather than merging it over the local copy — a
+merge is exactly what would hide a divergence like this again. There are
+regression tests in `api/events.test.ts` asserting the untouched fields are
+present in the request body.
 
 ### Mutations patch state from the response, not a re-fetch
 
@@ -128,7 +160,7 @@ A modal dependency would have been more to explain than to write.
 npm test
 ```
 
-35 tests, all over pure functions — no component rendering and no jsdom, so
+39 tests, all over pure functions — no component rendering and no jsdom, so
 the suite runs in under a second and stays worth running.
 
 Most of them are in `api/client.test.ts`, because error handling is what the

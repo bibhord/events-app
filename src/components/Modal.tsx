@@ -15,11 +15,20 @@ interface Props {
 export function Modal({ title, onClose, children }: Props) {
   const panel = useRef<HTMLDivElement>(null);
 
+  // Callers pass an inline arrow, so `onClose` is a new function every parent
+  // render. Depending on it directly would re-run this effect each time and
+  // yank focus back to the panel mid-typing. The ref keeps the effect running
+  // once while still calling the latest callback.
+  const latestClose = useRef(onClose);
+  useEffect(() => {
+    latestClose.current = onClose;
+  });
+
   useEffect(() => {
     panel.current?.focus();
 
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') latestClose.current();
     }
     document.addEventListener('keydown', onKeyDown);
 
@@ -30,7 +39,7 @@ export function Modal({ title, onClose, children }: Props) {
       document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [onClose]);
+  }, []);
 
   return createPortal(
     <div className="backdrop" onClick={onClose}>

@@ -21,22 +21,28 @@ export function EventDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  // A malformed id is knowable during render, so it is derived rather than
+  // pushed into state from an effect. Only the fetch needs an effect.
+  const numericId = Number(id);
+  const idIsValid = Number.isInteger(numericId) && numericId > 0;
+  const idError = idIsValid
+    ? null
+    : new ApiError('http', `"${id}" is not a valid event id.`, 404);
+
   const [event, setEvent] = useState<Event | null>(null);
-  const [error, setError] = useState<ApiError | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<ApiError | null>(null);
+  const [fetching, setFetching] = useState(idIsValid);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    const numericId = Number(id);
-    if (!Number.isFinite(numericId)) {
-      setError(new ApiError('http', `"${id}" is not a valid event id.`, 404));
-      setLoading(false);
-      return;
-    }
+    if (!idIsValid) return;
 
     const controller = new AbortController();
-    setLoading(true);
-    setError(null);
+    // Synchronising with an external system: the flag has to flip before the
+    // request goes out, which is not something render can derive.
+    // oxlint-disable-next-line react/set-state-in-effect
+    setFetching(true);
+    setFetchError(null);
 
     getEvent(numericId, controller.signal)
       .then((data) => {
@@ -44,14 +50,19 @@ export function EventDetail() {
       })
       .catch((caught: unknown) => {
         if (controller.signal.aborted) return;
-        setError(caught instanceof ApiError ? caught : new ApiError('network', 'Unexpected error.'));
+        setFetchError(
+          caught instanceof ApiError ? caught : new ApiError('network', 'Unexpected error.'),
+        );
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) setFetching(false);
       });
 
     return () => controller.abort();
-  }, [id, attempt]);
+  }, [numericId, idIsValid, attempt]);
+
+  const error = idError ?? fetchError;
+  const loading = idIsValid && fetching;
 
   const close = () => navigate('/');
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { NAMED_COLORS, isValid, normalize, validate } from '../lib/validation';
 import type { FieldErrors } from '../lib/validation';
@@ -19,13 +19,15 @@ interface Props {
  * button that will not say why is worse than a button that explains.
  */
 export function EventForm({ initial, submitLabel, busy, onSubmit, onCancel }: Props) {
+  // `initial` seeds the state and is then left alone. Syncing it back in an
+  // effect looks harmless but is not: the parent builds a fresh object every
+  // render, so a failed save -- which re-renders when `busy` flips back --
+  // would reset the form and throw away what the user had typed. The edit
+  // modal mounts this with key={event.id}, so switching events still starts
+  // a clean form.
   const [draft, setDraft] = useState<EventDraft>(initial ?? EMPTY_DRAFT);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitted, setSubmitted] = useState(false);
-
-  useEffect(() => {
-    if (initial) setDraft(initial);
-  }, [initial]);
 
   const errors: FieldErrors = validate(draft);
 

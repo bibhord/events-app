@@ -48,6 +48,9 @@ export function EventList({ events, busy, editingId, onEdit, onDelete }: Props) 
                     {event.name || '(untitled)'}
                   </Link>
                   <p className="row__description">{event.description}</p>
+                  {/* The company is the group heading, but the brief asks for
+                      it per event, so it is on the row as well. */}
+                  <p className="row__company">{event.company || 'No company'}</p>
                 </div>
                 <div className="row__actions">
                   <button type="button" onClick={() => onEdit(event)} disabled={busy}>

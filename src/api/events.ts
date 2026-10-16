@@ -14,10 +14,15 @@ export function createEvent(draft: EventDraft): Promise<Event> {
   return request<Event>('/', { method: 'POST', body: draft });
 }
 
-export function updateEvent(id: number, draft: EventDraft): Promise<Event> {
-  // PUT replaces the record, so send the fields we own. The API does not
-  // enforce a schema; these four are what the assignment requires.
-  return request<Event>(`/${id}`, { method: 'PUT', body: { ...draft, id } });
+export function updateEvent(existing: Event, draft: EventDraft): Promise<Event> {
+  // PUT *replaces* the record on this server, so the body has to be the whole
+  // event, not just the four fields this app edits. Sending only the draft
+  // silently drops date, email, phone, address, isActive and image -- and the
+  // loss is invisible from the list, which does not show those columns.
+  return request<Event>(`/${existing.id}`, {
+    method: 'PUT',
+    body: { ...existing, ...draft, id: existing.id },
+  });
 }
 
 export function deleteEvent(id: number): Promise<void> {

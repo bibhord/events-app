@@ -45,6 +45,10 @@ export function useEvents() {
 
   useEffect(() => {
     const controller = new AbortController();
+    // Synchronising with an external system, which is the case the rule's own
+    // guidance carves out. The abort on cleanup is why this cannot be derived
+    // during render instead.
+    // oxlint-disable-next-line react/set-state-in-effect
     void load(controller.signal);
     return () => controller.abort();
   }, [load]);
@@ -77,11 +81,14 @@ export function useEvents() {
   );
 
   const update = useCallback(
-    (id: number, draft: EventDraft) =>
+    (existing: Event, draft: EventDraft) =>
       run(async () => {
-        const updated = await api.updateEvent(id, draft);
+        const updated = await api.updateEvent(existing, draft);
+        // Replace the row with the server's record rather than merging over
+        // the old one. Merging would paper over any difference between what
+        // we think the event is and what was actually stored.
         setEvents((current) =>
-          byCompany(current.map((event) => (event.id === id ? { ...event, ...updated } : event))),
+          byCompany(current.map((event) => (event.id === updated.id ? updated : event))),
         );
         return updated;
       }),

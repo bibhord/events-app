@@ -29,7 +29,7 @@ export function EventsPage() {
 
   async function handleUpdate(draft: EventDraft) {
     if (!editing) return null;
-    const result = await update(editing.id, draft);
+    const result = await update(editing, draft);
     if (result) setEditing(null);
     return result;
   }
@@ -62,7 +62,8 @@ export function EventsPage() {
         </label>
       </header>
 
-      {actionError && (
+      {/* Shown here only when no modal is open; otherwise the modal renders it. */}
+      {actionError && !editing && !confirming && (
         <ErrorBanner error={actionError} onDismiss={dismissActionError} />
       )}
 
@@ -88,15 +89,25 @@ export function EventsPage() {
             events={events}
             busy={busy}
             editingId={editing?.id ?? null}
-            onEdit={setEditing}
-            onDelete={setConfirming}
+            onEdit={(event) => {
+              dismissActionError();
+              setEditing(event);
+            }}
+            onDelete={(event) => {
+              dismissActionError();
+              setConfirming(event);
+            }}
           />
         )}
       </section>
 
       {editing && (
         <Modal title={`Edit ${editing.name}`} onClose={() => setEditing(null)}>
+          {/* The page's own banner is behind the backdrop, so a failed save
+              has to report itself in here or it is invisible. */}
+          {actionError && <ErrorBanner error={actionError} onDismiss={dismissActionError} />}
           <EventForm
+            key={editing.id}
             initial={toDraft(editing)}
             submitLabel="Save changes"
             busy={busy}
@@ -108,6 +119,7 @@ export function EventsPage() {
 
       {confirming && (
         <Modal title="Delete event" onClose={() => setConfirming(null)}>
+          {actionError && <ErrorBanner error={actionError} onDismiss={dismissActionError} />}
           <p>
             Delete <strong>{confirming.name}</strong>? This cannot be undone.
           </p>
