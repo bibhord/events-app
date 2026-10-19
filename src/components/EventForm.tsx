@@ -88,27 +88,39 @@ export function EventForm({ initial, submitLabel, busy, onSubmit, onCancel }: Pr
         </Field>
 
         <Field label="Color" error={show('color')} htmlFor="color">
+          {/* A select rather than an input with a datalist. A datalist
+              filters its options by whatever is already in the box, so on
+              the edit form -- where the field starts with the current
+              colour -- the list collapsed to that one entry and the other
+              choices looked missing. The value set is fixed and small, so
+              a select is the honest control: every option is visible and
+              an invalid colour cannot be entered at all. */}
           <span className="color-input">
-            <input
+            <select
               id="color"
-              list="named-colors"
               value={draft.color}
-              placeholder="red"
               onChange={(e) => set('color', e.target.value)}
               onBlur={() => setTouched((t) => ({ ...t, color: true }))}
               aria-invalid={Boolean(show('color'))}
-            />
+            >
+              <option value="">Choose a color…</option>
+              {/* An event created elsewhere may carry a colour outside our
+                  list. Show it rather than silently blanking the field. */}
+              {draft.color && !NAMED_COLORS.includes(draft.color as never) && (
+                <option value={draft.color}>{draft.color} (not a named color)</option>
+              )}
+              {NAMED_COLORS.map((color) => (
+                <option key={color} value={color}>
+                  {color}
+                </option>
+              ))}
+            </select>
             <span
               className="swatch"
               aria-hidden="true"
               style={{ background: errors.color ? 'transparent' : draft.color }}
             />
           </span>
-          <datalist id="named-colors">
-            {NAMED_COLORS.map((color) => (
-              <option key={color} value={color} />
-            ))}
-          </datalist>
         </Field>
       </div>
 
