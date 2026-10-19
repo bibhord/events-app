@@ -4,6 +4,10 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // GitHub Pages serves this from /events-app/, everything else from the
+  // root. Set by the deploy workflow; unset locally and in a sandbox, so
+  // those keep working unchanged.
+  base: process.env.BASE_PATH ?? '/',
   server: {
     // Bind to 0.0.0.0 rather than localhost. Locally this changes nothing,
     // but in a container (CodeSandbox, Codespaces, Docker) the preview proxy
